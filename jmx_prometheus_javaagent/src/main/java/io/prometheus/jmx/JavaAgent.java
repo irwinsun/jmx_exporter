@@ -1,12 +1,12 @@
 package io.prometheus.jmx;
 
-import java.io.File;
-import java.lang.instrument.Instrumentation;
-import java.net.InetSocketAddress;
-
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.exporter.HTTPServer;
 import io.prometheus.client.hotspot.DefaultExports;
+
+import java.io.File;
+import java.lang.instrument.Instrumentation;
+import java.net.InetSocketAddress;
 
 public class JavaAgent {
 
@@ -22,7 +22,7 @@ public class JavaAgent {
 
      // If we have IPv6 address in square brackets, extract it first and then
      // remove it from arguments to prevent confusion from too many colons.
-     Integer indexOfClosingSquareBracket = agentArgument.indexOf("]:");
+     int indexOfClosingSquareBracket = agentArgument.indexOf("]:");
      if (indexOfClosingSquareBracket >= 0) {
        host = agentArgument.substring(0, indexOfClosingSquareBracket + 1);
        agentArgument = agentArgument.substring(indexOfClosingSquareBracket + 2);
@@ -30,14 +30,19 @@ public class JavaAgent {
 
      String[] args = agentArgument.split(":");
      if (args.length < 2 || args.length > 3) {
-       System.err.println("Usage: -javaagent:/path/to/JavaAgent.jar=[host:]<port>:<yaml configuration file>");
+       System.err.println("Usage: -javaagent:/path/to/JavaAgent.jar=[daemon@][host:]<port>:<yaml configuration file>");
        System.exit(1);
      }
 
      int port;
      String file;
      InetSocketAddress socket;
-
+     boolean daemon = true;
+     if (args[0].contains("@")) {
+       String[] daemonHost = args[0].split("@");
+       daemon = Boolean.valueOf(daemonHost[0]);
+       args[0] = daemonHost[1];
+     }
      if (args.length == 3) {
        port = Integer.parseInt(args[1]);
        socket = new InetSocketAddress(args[0], port);
@@ -51,6 +56,6 @@ public class JavaAgent {
      new BuildInfoCollector().register();
      new JmxCollector(new File(file)).register();
      DefaultExports.initialize();
-     server = new HTTPServer(socket, CollectorRegistry.defaultRegistry, true);
+     server = new HTTPServer(socket, CollectorRegistry.defaultRegistry, daemon);
    }
 }
